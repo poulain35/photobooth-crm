@@ -1,0 +1,153 @@
+<div class="bg-gray-100 min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-4xl mx-auto">
+    <div class="text-center mb-8">
+      <svg class="mx-auto h-12 w-auto text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.776 48.776 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+      </svg>
+      <h1 class="mt-4 text-3xl font-extrabold text-gray-900">Portail Client</h1>
+    </div>
+
+    @if (loading()) {
+      <div class="text-center bg-white shadow-lg rounded-lg p-10">
+        <p class="text-gray-600">Chargement de votre réservation...</p>
+      </div>
+    } @else if (error(); as e) {
+      <div class="text-center bg-white shadow-lg rounded-lg p-10">
+        <h2 class="text-xl font-bold text-red-600">Erreur</h2>
+        <p class="mt-2 text-gray-600">{{ e }}</p>
+      </div>
+    } @else if (booking(); as b) {
+      <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-200">
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-2xl font-bold text-gray-900">{{ b.eventName }}</h2>
+              <p class="text-sm text-gray-500">Pour {{ b.client?.firstName }} {{ b.client?.lastName }} - Réservation #{{ b.id }}</p>
+            </div>
+            <span [class]="'px-3 py-1 text-sm font-semibold rounded-full ' + getBookingStatusClass(b.status)">
+              {{ b.status }}
+            </span>
+          </div>
+        </div>
+        
+        <div class="p-6 space-y-8">
+           <!-- Details Table -->
+          <div class="overflow-x-auto">
+            <table class="min-w-full">
+              <tbody class="bg-white">
+                <tr>
+                  <td class="px-4 py-3 text-sm font-medium text-gray-500 w-1/3">Date de l'événement</td>
+                  <td class="px-4 py-3 text-sm text-gray-900">{{ b.eventDate | date:'fullDate':'':'fr' }}</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 text-sm font-medium text-gray-500">Contact</td>
+                  <td class="px-4 py-3 text-sm text-gray-900">{{ b.client?.email }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Quote Items -->
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Détails du devis</h3>
+            <div class="border border-gray-200 rounded-md">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  @for (item of b.quote?.items; track $index) {
+                    <tr>
+                      <td class="px-4 py-3 text-sm text-gray-700">
+                        {{ item.description }} <span class="text-gray-500">({{ item.quantity }} x {{ item.unitPrice | currency:'EUR':'symbol':'1.2-2':'fr' }})</span>
+                      </td>
+                      <td class="px-4 py-3 text-sm text-gray-900 text-right font-medium">
+                        {{ (item.quantity * item.unitPrice) | currency:'EUR':'symbol':'1.2-2':'fr' }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Financial Summary -->
+          @if(b.quote) {
+            <div class="flex justify-end">
+              <div class="w-full max-w-xs space-y-1 text-sm">
+                <div class="flex justify-between"><span class="text-gray-600">Sous-total HT:</span><span class="font-medium text-gray-800">{{ b.quote.subTotal | currency:'EUR':'symbol':'1.2-2':'fr' }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-600">TVA ({{ b.quote.taxRate * 100 }}%):</span><span class="font-medium text-gray-800">{{ b.quote.taxAmount | currency:'EUR':'symbol':'1.2-2':'fr' }}</span></div>
+                <div class="flex justify-between text-base font-bold pt-1 border-t mt-1"><span class="text-gray-900">Total TTC:</span><span class="text-primary-700">{{ b.quote.total | currency:'EUR':'symbol':'1.2-2':'fr' }}</span></div>
+                <div class="flex justify-between text-base font-bold pt-1 "><span class="text-gray-900">Acompte Requis:</span><span class="text-primary-700">{{ b.quote.depositAmount | currency:'EUR':'symbol':'1.2-2':'fr' }}</span></div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Action Section -->
+        @if (b.quote) {
+          <div class="px-6 py-5 bg-gray-50">
+            @if (b.quote.status === 'Sent') {
+              <div class="text-center">
+                <h3 class="text-lg font-medium text-gray-900">Prêt à confirmer ?</h3>
+                <p class="mt-1 text-sm text-gray-600">Veuillez signer électroniquement ci-dessous pour accepter ce devis.</p>
+                <form [formGroup]="signatureForm" (ngSubmit)="onSignQuote()" class="mt-4 max-w-sm mx-auto">
+                  <label for="signerName" class="sr-only">Votre nom complet</label>
+                  <input type="text" id="signerName" formControlName="signerName" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" placeholder="Entrez votre nom complet">
+                  <button type="submit" [disabled]="signatureForm.invalid || isProcessing()" class="mt-3 w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {{ isProcessing() ? 'Signature en cours...' : 'Accepter et Signer le Devis' }}
+                  </button>
+                </form>
+              </div>
+            } @else if (b.quote.status === 'Signed') {
+               <div class="text-center">
+                 <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100">
+                  <svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg>
+                </div>
+                <h3 class="mt-3 text-lg font-medium text-gray-900">Devis signé !</h3>
+                <p class="mt-1 text-sm text-gray-600">Signé par {{ b.quote.signedBy?.name }} le {{ b.quote.signedAt | date:'medium':'':'fr' }}.</p>
+                <p class="mt-4">Pour finaliser votre réservation, veuillez procéder au paiement de l'acompte.</p>
+                <button (click)="onPayDeposit()" [disabled]="isProcessing()" class="mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                   {{ isProcessing() ? 'Paiement en cours...' : 'Payer l\'acompte de ' + (b.quote.depositAmount | currency:'EUR':'symbol':'1.2-2':'fr') }}
+                </button>
+              </div>
+            } @else if (b.status === 'En attente de paiement final' && finalInvoice) {
+                <div class="text-center">
+                    <h3 class="text-lg font-medium text-gray-900">Paiement du solde</h3>
+                    <p class="mt-2 text-sm text-gray-600">Il ne vous reste plus qu'à régler le solde pour finaliser votre réservation.</p>
+                    <div class="my-4 p-4 bg-primary-50 border border-primary-200 rounded-lg inline-block">
+                        <span class="text-lg font-bold text-primary-800">Solde à payer: {{ finalInvoice.amount | currency:'EUR':'symbol':'1.2-2':'fr' }}</span>
+                    </div>
+                    <div>
+                        <button (click)="onPayFinalBalance()" [disabled]="isProcessing()" class="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                            {{ isProcessing() ? 'Paiement en cours...' : 'Payer le Solde' }}
+                        </button>
+                    </div>
+                </div>
+            } @else if (b.status === 'Confirmé') {
+              <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                  <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                </div>
+                <h3 class="mt-3 text-lg font-medium text-gray-900">Réservation Confirmée !</h3>
+                <p class="mt-1 text-sm text-gray-600">Merci ! Votre acompte a bien été reçu. Nous vous enverrons la facture de solde à régler avant l'événement.</p>
+              </div>
+            } @else if (b.status === 'Payé en totalité' || b.status === 'Terminé') {
+                 <div class="text-center">
+                  <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-teal-100">
+                    <svg class="h-6 w-6 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                  </div>
+                  <h3 class="mt-3 text-lg font-medium text-gray-900">Paiement finalisé !</h3>
+                  <p class="mt-1 text-sm text-gray-600">Merci pour votre confiance. Nous avons hâte de célébrer avec vous !</p>
+                </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

@@ -1,0 +1,5 @@
+{
+  "name": "Photobooth CRM",
+  "description": "A comprehensive CRM application for managing a photobooth rental business, including client, booking, and invoice management.",
+  "requestFramePermissions": []
+}

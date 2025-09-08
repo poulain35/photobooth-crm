@@ -1,0 +1,186 @@
+<div class="space-y-8">
+  @if(loading()) {
+    <div class="text-center py-20">
+      <p class="text-gray-500">Chargement du constructeur de devis...</p>
+    </div>
+  } @else if (booking(); as b) {
+    <!-- Section 1: Header and Summary -->
+    <header>
+       <div class="flex justify-between items-start">
+        <div>
+          <h1 class="text-3xl font-bold leading-tight text-gray-900">Devis pour {{ b.eventName }}</h1>
+          <p class="mt-1 text-sm text-gray-500">Réservation #{{ b.id }}</p>
+        </div>
+        <div class="flex items-center space-x-4">
+          <div class="flex items-center space-x-2">
+            <span class="text-sm font-medium text-gray-600">Devis:</span>
+            <span [class]="'px-3 py-1 text-xs font-semibold rounded-full ' + getQuoteStatusClass(b.quote?.status || 'Draft')">
+              {{ b.quote?.status || 'Draft' }}
+            </span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="text-sm font-medium text-gray-600">Réservation:</span>
+            <span [class]="'px-3 py-1 text-xs font-semibold rounded-full ' + getBookingStatusClass(b.status)">
+              {{ b.status }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white p-5 shadow rounded-lg">
+          <h3 class="text-lg font-medium text-gray-900">Client</h3>
+          <div class="mt-2 text-sm text-gray-600 space-y-1">
+            <p><strong class="font-semibold text-gray-800">Nom:</strong> {{ b.client?.firstName }} {{ b.client?.lastName }}</p>
+            <p><strong class="font-semibold text-gray-800">Email:</strong> {{ b.client?.email }}</p>
+            <p><strong class="font-semibold text-gray-800">Téléphone:</strong> {{ b.client?.phone }}</p>
+          </div>
+        </div>
+         <div class="bg-white p-5 shadow rounded-lg">
+          <h3 class="text-lg font-medium text-gray-900">Événement</h3>
+           <div class="mt-2 text-sm text-gray-600 space-y-1">
+            <p><strong class="font-semibold text-gray-800">Date:</strong> {{ b.eventDate | date:'fullDate':'':'fr' }}</p>
+            <p><strong class="font-semibold text-gray-800">Type:</strong> {{ b.eventName }}</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Section 2: Quote Builder Form -->
+    <form [formGroup]="quoteForm" class="bg-white p-6 shadow rounded-lg">
+      <div formArrayName="items">
+        <h3 class="text-xl font-semibold text-gray-900 mb-4">Lignes du devis</h3>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5">Description</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qté</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix Unitaire</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Ligne</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              @for (itemGroup of items.controls; track $index) {
+                <tr [formGroupName]="$index">
+                  <td class="px-4 py-2 whitespace-nowrap">
+                    <input type="text" formControlName="description" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                  </td>
+                  <td class="px-4 py-2 whitespace-nowrap">
+                     <input type="number" formControlName="quantity" class="w-20 rounded-md border-gray-300 shadow-sm text-sm">
+                  </td>
+                   <td class="px-4 py-2 whitespace-nowrap">
+                     <input type="number" formControlName="unitPrice" class="w-24 rounded-md border-gray-300 shadow-sm text-sm">
+                  </td>
+                  <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-800">
+                    {{ (itemGroup.value.quantity * itemGroup.value.unitPrice) | currency:'EUR':'symbol':'1.2-2':'fr' }}
+                  </td>
+                  <td class="px-4 py-2 whitespace-nowrap text-right">
+                    <button type="button" (click)="removeItem($index)" class="text-red-600 hover:text-red-800 p-1">
+                      <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5" class="text-center py-4 text-gray-500">Aucun article dans ce devis.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-4 flex items-center gap-4">
+          <select #productSelect (change)="addProductItem(productSelect.value); productSelect.value = ''" class="rounded-md border-gray-300 shadow-sm text-sm w-64">
+            <option value="" disabled selected>Ajouter un produit prédéfini...</option>
+            @for(product of products(); track product.id) {
+              <option [value]="product.id">{{ product.name }}</option>
+            }
+          </select>
+          <button type="button" (click)="addCustomItem()" class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Ajouter une ligne personnalisée</button>
+        </div>
+      </div>
+    </form>
+    
+    <!-- Section 3: Financial Summary, Invoicing and Actions -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+       <!-- Invoicing -->
+       <div class="bg-white p-6 shadow rounded-lg">
+         <h3 class="text-xl font-semibold text-gray-900 mb-4">Facturation</h3>
+         <table class="min-w-full">
+           <thead class="border-b">
+             <tr>
+               <th class="pb-2 text-left text-sm font-medium text-gray-600">Type</th>
+               <th class="pb-2 text-left text-sm font-medium text-gray-600">Montant</th>
+               <th class="pb-2 text-left text-sm font-medium text-gray-600">Statut</th>
+               <th class="pb-2 text-left text-sm font-medium text-gray-600">Date</th>
+             </tr>
+           </thead>
+           <tbody>
+            @for(invoice of b.invoices; track invoice.id) {
+              <tr>
+                <td class="py-2 text-sm">{{ invoice.type }}</td>
+                <td class="py-2 text-sm">{{ invoice.amount | currency:'EUR':'symbol':'1.2-2':'fr' }}</td>
+                <td class="py-2 text-sm">
+                  <span [class]="'px-2 py-1 text-xs font-semibold rounded-full ' + getInvoiceStatusClass(invoice.status)">
+                    {{ invoice.status }}
+                  </span>
+                </td>
+                <td class="py-2 text-sm">{{ invoice.createdAt | date:'shortDate':'':'fr' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" class="py-4 text-center text-gray-500">Aucune facture générée.</td></tr>
+            }
+           </tbody>
+         </table>
+         <div class="mt-4 pt-4 border-t border-gray-200">
+            @if(b.status === 'Confirmé' && !hasFinalInvoice()) {
+                <button (click)="generateFinalInvoice()" [disabled]="isProcessing()" class="w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50">
+                    {{ isProcessing() ? 'Génération...' : 'Générer la Facture de Solde' }}
+                </button>
+            }
+            @if(finalInvoice?.status === 'Draft') {
+                <button (click)="sendFinalInvoice()" [disabled]="isProcessing()" class="w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
+                     {{ isProcessing() ? 'Envoi...' : 'Envoyer la Facture de Solde' }}
+                </button>
+            }
+             @if(b.status === 'Payé en totalité' && isEventPast()) {
+                <button (click)="completeBooking()" [disabled]="isProcessing()" class="w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50">
+                    {{ isProcessing() ? 'Clôture...' : 'Clôturer l\'événement' }}
+                </button>
+            }
+         </div>
+       </div>
+
+      <!-- Financial Summary & Quote Actions -->
+      <div class="space-y-4">
+        <div class="bg-white p-5 shadow rounded-lg space-y-2">
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600">Sous-total HT:</span>
+              <span class="font-medium text-gray-800">{{ subTotal() | currency:'EUR':'symbol':'1.2-2':'fr' }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600">TVA (20%):</span>
+              <span class="font-medium text-gray-800">{{ taxAmount() | currency:'EUR':'symbol':'1.2-2':'fr' }}</span>
+            </div>
+            <div class="flex justify-between text-lg font-semibold border-t pt-2 mt-2">
+              <span class="text-gray-900">Total TTC:</span>
+              <span class="text-primary-700">{{ total() | currency:'EUR':'symbol':'1.2-2':'fr' }}</span>
+            </div>
+             <div class="flex justify-between text-md font-semibold border-t pt-2 mt-2">
+              <span class="text-gray-900">Acompte requis (30%):</span>
+              <span class="text-primary-700">{{ depositAmount() | currency:'EUR':'symbol':'1.2-2':'fr' }}</span>
+            </div>
+        </div>
+        @if(b.status !== 'Terminé' && b.status !== 'Annulé') {
+          <div class="flex justify-end gap-3">
+              <button (click)="saveQuote()" [disabled]="isProcessing()" type="button" class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">Enregistrer le brouillon</button>
+              @if(b.quote?.status === 'Draft' || b.quote?.status === undefined) {
+                <button (click)="sendForSignature()" [disabled]="items.length === 0 || isProcessing()" type="button" class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                  Générer et Envoyer
+                </button>
+              }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
